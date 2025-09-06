@@ -58,7 +58,11 @@ local function handleFunc(func)
 	end
 end
 
-local function search()
+local function search(prefix, black, shouldhook)
+	prefixes = prefix or prefixes
+	blacklist = black or blacklist
+	shouldHook = shouldhook or false
+	
 	for _, v in next, garbage do
 		if type(v) == "thread" then
 			for _, b in next, debug.getstack(1, v) do
@@ -99,4 +103,4 @@ local function search()
 	print("--------------------------------")
 end
 
-search()
+getgenv.gcsearch = search
