@@ -1,5 +1,8 @@
 local Players = game:GetService("Players")
 
+print("a")
+print(Players)
+
 local shouldHook = false
 local prefixes = {""} --scan everything
 local blacklist = {
@@ -105,3 +108,4 @@ local function search()
 end
 
 search()
+
