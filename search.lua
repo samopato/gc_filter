@@ -13,8 +13,8 @@ local blacklist = {
 	"RequireOnlineModule",
 }
 
-for _,player in pairs(Players:GetPlayers()) do
-	table.insert(blacklist, "=." ..player.Name)
+for _,v in pairs(Players:GetPlayers()) do
+	table.insert(blacklist, "=." ..v.Name)
 end
 
 local garbage = getgc(true)
@@ -85,7 +85,7 @@ local function search()
 		if not shouldHook then
 			continue
 		end
-		
+
 		local function hook(func, id) 
 			local original; original = hookfunction(func, newcclosure(function(...)
 				warn("hooked " ..id)
@@ -95,7 +95,7 @@ local function search()
 		for id, func in next, v.withoutName do
 			hook(func, id)
 		end
-		
+
 		for id, func in next, v.withName do
 			hook(func, id)	
 		end
@@ -105,5 +105,3 @@ local function search()
 end
 
 search()
-
-
