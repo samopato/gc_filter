@@ -1,3 +1,5 @@
+local Players = game:GetService("Player")
+
 local shouldHook = false
 local prefixes = {""} --scan everything
 local blacklist = {
@@ -10,6 +12,10 @@ local blacklist = {
 	"=.Justin",
 	"RequireOnlineModule",
 }
+
+for _,player in pairs(Players:GetPlayers()) do
+	table.insert(blacklist, "=." ..player.Name)
+end
 
 local garbage = getgc(true)
 local groups = {}
@@ -99,3 +105,4 @@ local function search()
 end
 
 search()
+
