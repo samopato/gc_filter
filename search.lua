@@ -1,4 +1,4 @@
-local Players = game:GetService("Player")
+local Players = game:GetService("Players")
 
 local shouldHook = false
 local prefixes = {""} --scan everything
@@ -105,4 +105,5 @@ local function search()
 end
 
 search()
+
 
