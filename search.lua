@@ -1,28 +1,29 @@
-local Players = game:GetService("Players")
+-----------------------------------------
+-- // GC Scanning
+-----------------------------------------
 
-local shouldHook = false
-local prefixes = {""} --scan everything
-local blacklist = {
-	"=[C]",
-	"Base64",
-	"=RbxStu",
-	"=Players",
-	"=loadstring",
-	"saveinstance",
-	"=.Justin",
-	"RequireOnlineModule",
-}
-
-for _,v in pairs(Players:GetPlayers()) do
-	table.insert(blacklist, "=." ..v.Name)
+local function getDefaultBlacklist()
+	local blacklist = {
+		"=[C]",
+		"Base64",
+		"=RbxStu", 
+		"=Players",
+		"=loadstring",
+		"=.Justin",
+		"saveinstance",
+		"RequireOnlineModule",
+	}
+	
+	-- Add player names to blacklist
+	for _,v in pairs(game:GetService("Players"):GetPlayers()) do 
+		table.insert(blacklist, "=".. v.Name)
+	end
+	
+	return blacklist
 end
-
-local garbage = getgc(true)
-local groups = {}
 
 local function matchesPrefix(str, data)
 	local str = str:lower()
-
 	for _, prefix in pairs(data) do
 		if str:sub(1, #prefix) == prefix:lower() then
 			return true
@@ -31,79 +32,171 @@ local function matchesPrefix(str, data)
 	return false
 end
 
-local function handleFunc(func)
+local function handleFunc(func, prefixes, blacklist, groups)
 	if type(func) ~= "function" then 
 		return
 	end
-
-	local data = debug.getinfo(func)
-	local source = data.source
+	
+	-- Safely get debug info
+	local success, data = pcall(debug.getinfo, func)
+	if not success or not data then
+		return
+	end
+	
+	local source = data.source or "Unknown"
+	
+	-- Check prefix and blacklist
 	if not matchesPrefix(source, prefixes) or matchesPrefix(source, blacklist) then
 		return
 	end
-
-	local group = groups[data.source]
+	
+	-- Initialize group if it doesn't exist
+	local group = groups[source]
 	if not group then
-		groups[data.source] = {withName = {}, withoutName = {}}
-		group = groups[data.source]
+		groups[source] = {withName = {}, withoutName = {}}
+		group = groups[source]
 	end
-
-	if data.name then
+	
+	-- Add function to appropriate category
+	if data.name and data.name ~= "" then
 		group.withName[data.name] = func
 	else
-		local baseKey = tostring(data.currentline)
+		local baseKey = tostring(data.currentline or "unknown")
 		local key = baseKey
 		local i = 2
-
 		while group.withoutName[key] do
 			key = baseKey .. "_" .. i
-			i += 1
+			i = i + 1
 		end
-
-		print(key)
 		group.withoutName[key] = func
 	end
 end
 
-local function search()
+local function scan(prefixes, shouldHook, blacklist)
+	-- Set defaults if not provided
+	prefixes = prefixes or {""}  -- scan everything by default
+	shouldHook = shouldHook or false
+	blacklist = blacklist or getDefaultBlacklist()
+	
+	local groups = {}
+	
+	-- Get garbage collection data safely
+	local success, garbage = pcall(getgc, true)
+	if not success then
+		warn("Failed to get garbage collection data")
+		return groups
+	end
+	
+	-- Process garbage collection data
 	for _, v in next, garbage do
 		if type(v) == "thread" then
-			for _, b in next, debug.getstack(1, v) do
-				handleFunc(b)
+			-- Handle thread stack
+			local stackSuccess, stack = pcall(debug.getstack, 1, v)
+			if stackSuccess and stack then
+				for _, func in next, stack do
+					handleFunc(func, prefixes, blacklist, groups)
+				end
 			end
 		else
-			handleFunc(v)
+			-- Handle direct functions
+			handleFunc(v, prefixes, blacklist, groups)
 		end
 	end
-
-	for i,v in pairs(groups) do        
-		print("--------------------------------")
-
-		warn(i)
-		warn(v)
-
-		if not shouldHook then
-			continue
-		end
-
-		local function hook(func, id) 
-			local original; original = hookfunction(func, newcclosure(function(...)
-				warn("hooked " ..id)
-			end))
-		end
-
-		for id, func in next, v.withoutName do
-			hook(func, id)
-		end
-
-		for id, func in next, v.withName do
-			hook(func, id)	
-		end
-	end
-
-	print("--------------------------------")
+	
+	return groups
 end
 
-search()
+-----------------------------------------
+-- // Window
+-----------------------------------------
+local ReGui = loadstring(game:HttpGet('https://raw.githubusercontent.com/depthso/Dear-ReGui/refs/heads/main/ReGui.lua'))()
+local Window = ReGui:Window({
+	Title = "GC Inspector",
+	Size = UDim2.fromOffset(400, 300)
+})
 
+local Group = Window:List({
+	UiPadding = 2,
+	HorizontalFlex = Enum.UIFlexAlignment.Fill,
+})
 
+local TabsBar = Group:List({
+	Border = true,
+	UiPadding = 5,
+	BorderColor = Window:GetThemeKey("Border"),
+	BorderThickness = 1,
+	HorizontalFlex = Enum.UIFlexAlignment.Fill,
+	HorizontalAlignment = Enum.HorizontalAlignment.Center,
+	FlexMode = Enum.UIFlexMode.None,
+})
+
+local currentNodes = {} -- Keep track of current tree nodes for clearing
+
+local function clearPreviousNodes()
+	for _, node in pairs(currentNodes) do
+		if node and node.Destroy then
+			pcall(node.Destroy, node)
+		end
+	end
+	currentNodes = {}
+end
+
+local function render(data)
+	clearPreviousNodes()
+	
+	if not data or next(data) == nil then
+		local noDataLabel = TabsBar:Label({
+			Text = "No functions found"
+		})
+		table.insert(currentNodes, noDataLabel)
+		return
+	end
+	
+	for name, script in pairs(data) do
+		local scriptTree = TabsBar:TreeNode({ Title = name })
+		table.insert(currentNodes, scriptTree)
+		
+		-- Create withName section
+		if next(script.withName) then
+			local withList = scriptTree:TreeNode({ Title = "withName (" .. #script.withName .. ")" })
+			for funcName, func in pairs(script.withName) do
+				withList:Label({
+					Text = funcName
+				})
+			end
+		end
+		
+		-- Create withoutName section  
+		if next(script.withoutName) then
+			local withoutList = scriptTree:TreeNode({ Title = "withoutName (" .. #script.withoutName .. ")" })
+			for key, func in pairs(script.withoutName) do
+				withoutList:Label({
+					Text = key
+				})
+			end
+		end
+	end
+end
+
+-- Scan button
+Window:Button({
+	Text = "Refresh Scan",
+	Callback = function()
+		local data = scan({""}, false, nil) -- Use defaults: scan everything, no hook, default blacklist
+		render(data)
+		local count = 0
+		for _ in pairs(data) do count = count + 1 end
+	end
+})
+
+-- Clear button
+Window:Button({
+	Text = "Clear Results",
+	Callback = function()
+		clearPreviousNodes()
+	end
+})
+
+-- Initial scan
+local initialData = scan({""}, false, nil) -- Use defaults
+render(initialData)
