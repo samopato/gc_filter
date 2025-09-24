@@ -9,6 +9,7 @@ local function getDefaultBlacklist()
 		"=RbxStu", 
 		"=Players",
 		"=loadstring",
+		"@",
 		"saveinstance",
 		"RequireOnlineModule",
 	}
