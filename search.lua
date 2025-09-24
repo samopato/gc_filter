@@ -138,6 +138,16 @@ local function clearPreviousNodes()
 	currentNodes = {}
 end
 
+local function getAmmount(t)
+local count = #t or 0
+
+for _,v in next, t do
+count += 1
+end
+
+return count
+end
+
 local function render(data)
 	clearPreviousNodes()
 	
@@ -155,7 +165,7 @@ local function render(data)
 		
 		-- Create withName section
 		if next(script.withName) then
-			local withList = scriptTree:TreeNode({ Title = "withName (" .. #script.withName .. ")" })
+			local withList = scriptTree:TreeNode({ Title = "withName (" .. getAmmount(script.withName) .. ")" })
 			for funcName, func in pairs(script.withName) do
 				withList:Label({
 					Text = funcName
@@ -165,7 +175,7 @@ local function render(data)
 		
 		-- Create withoutName section  
 		if next(script.withoutName) then
-			local withoutList = scriptTree:TreeNode({ Title = "withoutName (" .. #script.withoutName .. ")" })
+			local withoutList = scriptTree:TreeNode({ Title = "withoutName (" .. getAmmount(script.withoutName) .. ")" })
 			for key, func in pairs(script.withoutName) do
 				withoutList:Label({
 					Text = key
