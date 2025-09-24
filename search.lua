@@ -15,7 +15,7 @@ local function getDefaultBlacklist()
 	
 	-- Add player names to blacklist
 	for _,v in pairs(game:GetService("Players"):GetPlayers()) do 
-		table.insert(blacklist, "=".. v.Name)
+		table.insert(blacklist, ".=".. v.Name)
 	end
 	
 	return blacklist
