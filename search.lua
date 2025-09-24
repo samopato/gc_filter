@@ -9,7 +9,6 @@ local function getDefaultBlacklist()
 		"=RbxStu", 
 		"=Players",
 		"=loadstring",
-		"=.Justin",
 		"saveinstance",
 		"RequireOnlineModule",
 	}
@@ -134,9 +133,7 @@ local currentNodes = {} -- Keep track of current tree nodes for clearing
 
 local function clearPreviousNodes()
 	for _, node in pairs(currentNodes) do
-		if node and node.Destroy then
-			pcall(node.Destroy, node)
-		end
+		node:Remove()
 	end
 	currentNodes = {}
 end
